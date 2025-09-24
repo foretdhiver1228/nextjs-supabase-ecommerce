@@ -4,7 +4,18 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
+import { loadTossPayments, TossPaymentsSDK } from "@tosspayments/tosspayments-sdk";
+
+interface TossPaymentRequestOptions {
+  method: string;
+  amount: { value: number; currency: string; };
+  orderId: string;
+  orderName: string;
+  successUrl: string;
+  failUrl: string;
+  customerName?: string;
+  customerEmail?: string;
+}
 
 interface CartItem {
   id: string;
@@ -18,6 +29,17 @@ interface CartItem {
   };
 }
 
+// Helper function to validate URL
+const isValidUrl = (url: string | undefined): boolean => {
+  if (!url) return false;
+  try {
+    new URL(url);
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
 export default function CartPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -25,7 +47,7 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [tossPayments, setTossPayments] = useState<any>(null);
+  const [tossPayments, setTossPayments] = useState<TossPaymentsSDK | null>(null);
   const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("카드"); // Default to Card
   const [customerName, setCustomerName] = useState("");
@@ -88,7 +110,7 @@ export default function CartPage() {
       const totalAmount = calculateTotalPrice();
       const orderName = cartItems.length > 1 ? `${cartItems[0].products.name} 외 ${cartItems.length - 1}개` : cartItems[0].products.name;
 
-      const paymentOptions: any = {
+      const paymentOptions = {
         amount: { value: totalAmount, currency: "KRW" },
         orderId: `order-${Date.now()}-${user?.id}`,
         orderName: orderName,
@@ -166,7 +188,7 @@ export default function CartPage() {
       <div className="grid grid-cols-1 gap-4 mb-8">
         {cartItems.map((item) => (
           <div key={item.id} className="border border-gray-200 p-4 rounded-lg shadow-sm bg-white flex items-center gap-4">
-            {item.products.image_url && (
+            {item.products.image_url && isValidUrl(item.products.image_url) && (
               <Image
                 src={item.products.image_url}
                 alt={item.products.name}
