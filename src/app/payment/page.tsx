@@ -1,10 +1,20 @@
 "use client";
 
-import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
-import { useEffect, useState } from "react";
+import { loadTossPayments, TossPaymentsSDK } from "@tosspayments/tosspayments-sdk";
+
+interface TossPaymentRequestOptions {
+  method: string;
+  amount: { value: number; currency: string; };
+  orderId: string;
+  orderName: string;
+  successUrl: string;
+  failUrl: string;
+  customerName?: string;
+  customerEmail?: string;
+}
 
 export default function PaymentPage() {
-  const [tossPayments, setTossPayments] = useState(null);
+  const [tossPayments, setTossPayments] = useState<TossPaymentsSDK | null>(null);
   const [paymentMethod, setPaymentMethod] = useState("CARD");
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -38,7 +48,7 @@ export default function PaymentPage() {
         customerKey: "ANONYMOUS", // 또는 사용자 고유의 customerKey
       });
 
-      const paymentOptions: any = {
+      const paymentOptions = {
         amount: { value: 100000, currency: "KRW" },
         orderId: `order-${Date.now()}`,
         orderName: "Example Product",
