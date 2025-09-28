@@ -1,12 +1,24 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const supabase = createServerClient();
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get: (name: string) => cookieStore.get(name)?.value,
+          set: (name: string, value: string, options: any) => cookieStore.set(name, value, options),
+          remove: (name: string, options: any) => cookieStore.delete(name, options),
+        },
+      }
+    );
+
     const { data, error } = await supabase.from('test_items').select('*');
 
     if (error) {
@@ -23,7 +35,19 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const supabase = createServerClient();
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get: (name: string) => cookieStore.get(name)?.value,
+          set: (name: string, value: string, options: any) => cookieStore.set(name, value, options),
+          remove: (name: string, options: any) => cookieStore.delete(name, options),
+        },
+      }
+    );
+
     const { name } = await request.json();
 
     if (!name) {

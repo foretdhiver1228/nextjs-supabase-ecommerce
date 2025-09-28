@@ -1,12 +1,24 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const supabase = createServerClient(cookies());
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get: (name: string) => cookieStore.get(name)?.value,
+          set: (name: string, value: string, options: any) => cookieStore.set(name, value, options),
+          remove: (name: string, options: any) => cookieStore.delete(name, options),
+        },
+      }
+    );
+
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError || !user) {
@@ -50,7 +62,19 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const supabase = createServerClient(cookies());
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get: (name: string) => cookieStore.get(name)?.value,
+          set: (name: string, value: string, options: any) => cookieStore.set(name, value, options),
+          remove: (name: string, options: any) => cookieStore.delete(name, options),
+        },
+      }
+    );
+
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError || !user) {
@@ -98,9 +122,6 @@ export async function POST(request: Request) {
       console.error('Error creating order items:', orderItemsError);
       return NextResponse.json({ error: orderItemsError.message }, { status: 500 });
     }
-
-    // 3. Clear the cart (already handled by /api/cart/clear, but can be done here too if needed)
-    // This API route will be called after cart is cleared on client side
 
     return NextResponse.json({ message: 'Order created successfully', order: orderData }, { status: 201 });
   } catch (e) {

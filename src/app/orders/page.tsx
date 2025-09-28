@@ -27,6 +27,17 @@ interface Order {
   order_items: OrderItem[];
 }
 
+// URL 유효성을 검사하는 헬퍼 함수입니다.
+const isValidUrl = (url: string | undefined): boolean => {
+  if (!url) return false;
+  try {
+    new URL(url);
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -52,9 +63,9 @@ export default function OrdersPage() {
       }
       const data: Order[] = await response.json();
       setOrders(data);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to fetch orders:', e);
-      setError(e.message || 'Failed to fetch orders');
+      setError(e instanceof Error ? e.message : 'Failed to fetch orders');
     } finally {
       setLoading(false);
     }
@@ -94,7 +105,7 @@ export default function OrdersPage() {
             <div className="grid grid-cols-1 gap-4">
               {order.order_items.map((item) => (
                 <div key={item.id} className="flex items-center gap-4 border-t border-gray-100 pt-4">
-                  {item.products.image_url && (
+                  {item.products.image_url && isValidUrl(item.products.image_url) ? (
                     <Image
                       src={item.products.image_url}
                       alt={item.products.name}
@@ -102,6 +113,10 @@ export default function OrdersPage() {
                       height={60}
                       className="object-cover rounded-md"
                     />
+                  ) : (
+                    <div className="w-15 h-15 bg-gray-200 flex items-center justify-center rounded-md text-gray-500 text-xs flex-shrink-0">
+                      이미지 없음
+                    </div>
                   )}
                   <div>
                     <Link href={`/products/${item.products.id}`} className="text-md font-medium text-blue-600 hover:underline">

@@ -137,6 +137,46 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 -   `/payment/success`: Toss Payments success redirect page.
 -   `/payment/fail`: Toss Payments failure redirect page.
 
-## Known Issues
+## API Route Authentication
 
--   **Persistent `cookies() should be awaited` warning in terminal**: This is a known strictness warning from Next.js App Router when interacting with `next/headers` and `@supabase/ssr`. While functionality is not broken, it's a persistent warning in development logs. A long-term solution might involve further updates to `@supabase/ssr` or Next.js, or a more advanced workaround.
+All server-side authentication in API Route Handlers (`src/app/api/...`) should use the `@supabase/ssr` library, which is the recommended approach for the Next.js App Router.
+
+It is critical to create the Supabase client **directly** within each route handler that requires it. Do not use a shared helper function to create the client, as this can conflict with Next.js's dynamic rendering and cause authentication to fail.
+
+**Correct Pattern:**
+
+```typescript
+// In an API Route file (e.g., /api/cart/route.ts)
+import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
+export async function GET(request: Request) {
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          cookieStore.set(name, value, options);
+        },
+        remove(name: string, options: any) {
+          cookieStore.delete(name, options);
+        },
+      },
+    }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // ... rest of your logic
+}
+```

@@ -35,7 +35,7 @@ const isValidUrl = (url: string | undefined): boolean => {
   try {
     new URL(url);
     return true;
-  } catch (e) {
+  } catch (e: unknown) {
     return false;
   }
 };
@@ -52,6 +52,7 @@ export default function CartPage() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("카드"); // Default to Card
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  const [selectedItems, setSelectedItems] = useState<string[]>([]); // 선택된 장바구니 항목 ID
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -68,8 +69,8 @@ export default function CartPage() {
       try {
         const loadedTossPayments = await loadTossPayments(clientKey);
         setTossPayments(loadedTossPayments);
-      } catch (error) {
-        console.error("Error loading Toss Payments SDK:", error);
+      } catch (e: unknown) {
+        console.error("Error loading Toss Payments SDK:", e);
       }
     }
     fetchTossPayments();
@@ -87,9 +88,10 @@ export default function CartPage() {
       }
       const data: CartItem[] = await response.json();
       setCartItems(data);
-    } catch (e: any) {
+      setSelectedItems([]); // 장바구니 항목을 새로 가져올 때 선택된 항목 초기화
+    } catch (e: unknown) {
       console.error('Failed to fetch cart items:', e);
-      setError(e.message || 'Failed to fetch cart items');
+      setError(e instanceof Error ? e.message : 'Failed to fetch cart items');
     } finally {
       setLoading(false);
     }
@@ -153,11 +155,54 @@ export default function CartPage() {
       });
 
       // Payment success is handled by redirect to /payment/success
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Checkout failed:', e);
-      alert(`결제 실패: ${e.message || '알 수 없는 오류'}`);
+      alert(`결제 실패: ${e instanceof Error ? e.message : '알 수 없는 오류'}`);
     } finally {
       setCheckoutLoading(false);
+    }
+  };
+
+  const handleSelectItem = (itemId: string, isChecked: boolean) => {
+    if (isChecked) {
+      setSelectedItems((prev) => [...prev, itemId]);
+    } else {
+      setSelectedItems((prev) => prev.filter((id) => id !== itemId));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedItems.length === 0) {
+      alert('삭제할 항목을 선택해주세요.');
+      return;
+    }
+
+    if (!confirm('선택된 항목을 장바구니에서 삭제하시겠습니까?')) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/cart/delete-selected', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ itemIds: selectedItems }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      alert('선택된 항목이 삭제되었습니다.');
+      fetchCartItems(); // 장바구니 목록 새로고침
+    } catch (e: unknown) {
+      console.error('Failed to delete selected items:', e);
+      setError(e instanceof Error ? e.message : 'Failed to delete selected items');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -169,6 +214,10 @@ export default function CartPage() {
 
   const calculateTotalPrice = () => {
     return cartItems.reduce((total, item) => total + item.products.price * item.quantity, 0);
+  };
+
+  const calculateTotalQuantity = () => {
+    return cartItems.reduce((total, item) => total + item.quantity, 0);
   };
 
   if (loading || authLoading || !user) {
@@ -185,19 +234,42 @@ export default function CartPage() {
 
       {cartItems.length === 0 && !loading && !error && <p className="text-center text-gray-600">장바구니가 비어 있습니다.</p>}
 
+      {cartItems.length > 0 && (
+        <div className="mb-4 flex justify-between items-center">
+          <p className="text-lg font-semibold">총 수량: {calculateTotalQuantity()}개</p>
+          <button
+            onClick={handleDeleteSelected}
+            disabled={selectedItems.length === 0 || loading}
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:opacity-50"
+          >
+            선택 상품 삭제
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 mb-8">
         {cartItems.map((item) => (
           <div key={item.id} className="border border-gray-200 p-4 rounded-lg shadow-sm bg-white flex items-center gap-4">
-            {item.products.image_url && isValidUrl(item.products.image_url) && (
+            <input
+              type="checkbox"
+              checked={selectedItems.includes(item.id)}
+              onChange={(e) => handleSelectItem(item.id, e.target.checked)}
+              className="form-checkbox h-5 w-5 text-blue-600"
+            />
+            {item.products.image_url && isValidUrl(item.products.image_url) ? (
               <Image
                 src={item.products.image_url}
                 alt={item.products.name}
                 width={80}
                 height={80}
-                className="object-cover rounded-md"
+                className="object-cover rounded-md flex-shrink-0"
               />
+            ) : (
+              <div className="w-20 h-20 bg-gray-200 flex items-center justify-center rounded-md text-gray-500 text-xs flex-shrink-0">
+                이미지 없음
+              </div>
             )}
-            <div>
+            <div className="flex-grow">
               <h3 className="text-lg font-semibold text-gray-800">{item.products.name}</h3>
               <p className="text-sm text-gray-600">수량: {item.quantity}</p>
               <p className="text-md font-bold text-gray-900">가격: {(item.products.price * item.quantity).toLocaleString()}원</p>

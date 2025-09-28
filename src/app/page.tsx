@@ -92,7 +92,13 @@ export default function Home() {
           {products.map((product) => (
             <Link href={`/products/${product.id}`} key={product.id} className="block no-underline text-inherit">
               <div className="border border-gray-200 rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer bg-white">
-                {product.image_url && isValidUrl(product.image_url) && <img src={product.image_url} alt={product.name} className="w-full h-40 object-cover rounded-md mb-3" />}
+                {product.image_url && isValidUrl(product.image_url) ? (
+                  <img src={product.image_url} alt={product.name} className="w-full h-40 object-cover rounded-md mb-3" />
+                ) : (
+                  <div className="w-full h-40 bg-gray-200 flex items-center justify-center rounded-md mb-3 text-gray-500 text-sm">
+                    이미지 없음
+                  </div>
+                )}
                 <h3 className="text-lg font-semibold mb-1 text-gray-800">{product.name}</h3>
                 <p className="text-sm text-gray-600 mb-2 line-clamp-2">{product.description}</p>
                 <p className="text-md font-bold text-gray-900">가격: {product.price.toLocaleString()}원</p>
