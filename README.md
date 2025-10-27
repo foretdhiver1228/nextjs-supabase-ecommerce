@@ -13,6 +13,17 @@ This is a small-scale e-commerce application built with Next.js, Supabase, and i
 -   **Order History**: View a list of past orders with detailed order items.
 -   **Responsive Design**: Modern and clean UI using Tailwind CSS.
 
+## Screenshots
+
+### Main Page
+![Main Page](./public/readme-images/mainImage.png)
+
+### Login Page
+![Login Page](./public/readme-images/login.png)
+
+### Mobile View
+![Mobile View](./public/readme-images/mobileimage.png)
+
 ## Technologies Used
 
 -   **Frontend**: Next.js (App Router), React, TypeScript
